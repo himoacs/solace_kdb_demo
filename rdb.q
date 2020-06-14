@@ -2,7 +2,7 @@
 // This q script is responsible for listening to a Solace topic and capturing all the raw records in real-time.
 
 // Load sol_init.q which has all the PubSub+ configurations
-\l sol_init.q
+\l common/sol_init.q
 
 // Queue that we would like to subscribe to
 topic:`$"EQ/marketData/v1/>";

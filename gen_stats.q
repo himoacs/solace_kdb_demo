@@ -5,7 +5,7 @@
 // The script receives updates by creating a queue, mapping a topic to it, and then binding to that queue. 
 
 // Load sol_init.q which has all the PubSub+ configurations
-\l sol_init.q
+\l common/sol_init.q
 
 // Market Data queue that we would like to subscribe to
 subQueue:`$"market_data";
