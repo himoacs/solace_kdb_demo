@@ -1,19 +1,29 @@
 // Author: Himanshu Gupta
 // This q script is responsible for listening to a Solace PubSub+ queue for market data updates and then, generating
 // bar stats every minute. Those stats are then published back to different PubSub+ topics (unique per sym) using this 
-// structure: EQ/stats/v1/<sym_name>
+// structure: EQ/stats/v1/<sym_name>.
+// The script receives updates by creating a queue, mapping a topic to it, and then binding to that queue. 
 
 // Load sol_init.q which has all the PubSub+ configurations
 current_dir: raze system"pwd";
 sol_init_file: ssr[current_dir;"generate_stats";"common"],"/sol_init.q"
 system "l ",sol_init_file
 
-// Queue that we would like to subscribe to
+// Market Data queue that we would like to subscribe to
 subQueue:`$"market_data";
+topicToMap:`$"EQ/marketData/v1/US/>";
+
+-1"### Creating endpoint";
+.solace.createEndpoint[;1i]`ENDPOINT_ID`ENDPOINT_PERMISSION`ENDPOINT_ACCESSTYPE`ENDPOINT_NAME!`2`c`1,subQueue;
+
+-1"### Mapping topic: ", (string topicToMap), " to queue";
+.solace.endpointTopicSubscribe[;2i;topicToMap]`ENDPOINT_ID`ENDPOINT_NAME!(`2;subQueue);
 
 // Create a global table for capturing L1 quotes and trades
-
 prices:flip (`date`time`sym`exchange`currency`askPrice`askSize`bidPrice`bidSize`tradePrice`tradeSize)!(`date$();`time$();`symbol$();`symbol$();`symbol$();`float$();`float$();`float$();`float$();`float$();`float$());
+
+// Create a global table for stats
+stats: `date`sym`time xkey flip (`date`sym`time`lowAskSize`highAskSize`lowBidPrice`highBidPrice`lowBidSize`highBidSize`lowTradePrice`highTradePrice`lowTradeSize`highTradeSize`lowAskPrice`highAskPrice`vwap)!(`date$();`symbol$();`minute$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$());
 
 -1"### Registering queue message callback";
 
@@ -45,17 +55,20 @@ subUpdate:{[dest;payload;dict]
 updateStats:{[rawTable]
  // Generate minutely stats on data from last min
  `prices set rawTable:select from rawTable where time>.z.T-00:01;
- stats:select lowAskSize: min askSize,highAskSize: max askSize,lowBidPrice: min bidPrice,highBidPrice: max bidPrice,lowBidSize: min bidSize,highBidSize: max bidSize,lowTradePrice: min tradePrice,highTradePrice: max tradePrice,lowTradeSize: min tradeSize,highTradeSize: max tradeSize,lowAskPrice: min askPrice,highAskPrice: max askPrice,vwap:tradePrice wavg tradeSize by date, sym, time:1 xbar time.minute from rawTable;
- stats:select from stats where time=max time;
+ min_stats:select lowAskSize: min askSize,highAskSize: max askSize,lowBidPrice: min bidPrice,highBidPrice: max bidPrice,lowBidSize: min bidSize,highBidSize: max bidSize,lowTradePrice: min tradePrice,highTradePrice: max tradePrice,lowTradeSize: min tradeSize,highTradeSize: max tradeSize,lowAskPrice: min askPrice,highAskPrice: max askPrice,vwap:tradePrice wavg tradeSize by date, sym, time:1 xbar time.minute from rawTable;
+ min_stats:select from min_stats where time=max time;
+
+ // Inserts newly generated stats to global stats table
+ `stats insert min_stats;
 
  // Get all the unique syms
- s:exec distinct sym from stats;
+ s:exec distinct sym from min_stats;
 
  // Generate topic we will publish to for each sym
  t:s!{"EQ/stats/v1/",string(x)} each s;
- show(t);
+
  // Generate JSON payload from the table for each sym
- a:{[x;y] .j.j select from x where sym=y}[stats;];
+ a:{[x;y] .j.j select from x where sym=y}[min_stats;];
  p:s!a each s;
 
  // Send the payload
