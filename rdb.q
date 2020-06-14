@@ -4,7 +4,7 @@
 // Load sol_init.q which has all the PubSub+ configurations
 \l common/sol_init.q
 
-// Queue that we would like to subscribe to
+// Topic that we would like to subscribe to
 topic:`$"EQ/marketData/v1/>";
 
 // Create a global table for capturing L1 quotes and trades
