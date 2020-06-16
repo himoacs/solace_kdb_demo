@@ -21,7 +21,7 @@ topicToMap:`$"EQ/marketData/v1/US/>";
 prices:flip (`date`time`sym`exchange`currency`askPrice`askSize`bidPrice`bidSize`tradePrice`tradeSize)!(`date$();`time$();`symbol$();`symbol$();`symbol$();`float$();`float$();`float$();`float$();`float$();`float$());
 
 // Create a global table for stats
-stats: `date`sym`time xkey flip (`date`sym`time`lowAskSize`highAskSize`lowBidPrice`highBidPrice`lowBidSize`highBidSize`lowTradePrice`highTradePrice`lowTradeSize`highTradeSize`lowAskPrice`highAskPrice`vwap)!(`date$();`symbol$();`minute$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$());
+stats: flip (`date`sym`time`lowAskSize`highAskSize`lowBidPrice`highBidPrice`lowBidSize`highBidSize`lowTradePrice`highTradePrice`lowTradeSize`highTradeSize`lowAskPrice`highAskPrice`vwap)!(`date$();`symbol$();`minute$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$();`float$());
 
 -1"### Registering queue message callback";
 
@@ -53,7 +53,7 @@ subUpdate:{[dest;payload;dict]
 updateStats:{[rawTable]
  // Generate minutely stats on data from last min
  `prices set rawTable:select from rawTable where time>.z.T-00:01;
- min_stats:select lowAskSize: min askSize,highAskSize: max askSize,lowBidPrice: min bidPrice,highBidPrice: max bidPrice,lowBidSize: min bidSize,highBidSize: max bidSize,lowTradePrice: min tradePrice,highTradePrice: max tradePrice,lowTradeSize: min tradeSize,highTradeSize: max tradeSize,lowAskPrice: min askPrice,highAskPrice: max askPrice,vwap:tradePrice wavg tradeSize by date, sym, time:1 xbar time.minute from rawTable;
+ min_stats:0!select lowAskSize: min askSize,highAskSize: max askSize,lowBidPrice: min bidPrice,highBidPrice: max bidPrice,lowBidSize: min bidSize,highBidSize: max bidSize,lowTradePrice: min tradePrice,highTradePrice: max tradePrice,lowTradeSize: min tradeSize,highTradeSize: max tradeSize,lowAskPrice: min askPrice,highAskPrice: max askPrice,vwap:tradePrice wavg tradeSize by date, sym, time:1 xbar time.minute from rawTable;
  min_stats:select from min_stats where time=max time;
 
  // Inserts newly generated stats to global stats table
